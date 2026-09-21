@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: aponga-lms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aponga
+      POSTGRES_PASSWORD: aponga_dev
+      POSTGRES_DB: aponga_lms
+    ports:
+      - "5432:5432"
+    volumes:
+      - aponga_lms_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aponga -d aponga_lms"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8.2
+    container_name: aponga-lms-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - aponga_lms_redisdata:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  aponga_lms_pgdata:
+  aponga_lms_redisdata:
