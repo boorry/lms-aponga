@@ -1,6 +1,6 @@
 # 01 — Analyse critique et suivi de résolution — APONGA LMS
 
-**Rôle de ce document** : présenter, de façon traçable, les points critiques identifiés dans la conception, et montrer où et comment chacun est désormais fermé. Il remplace `07_ANALYSE_CRITIQUE.md` reçu séparément, dont le contenu a été entièrement traité.
+**Rôle de ce document** : présenter, de façon traçable, les points critiques identifiés dans la conception, et montrer où et comment chacun est désormais fermé. Il remplace 07_ANALYSE_CRITIQUE.md reçu séparément, dont le contenu a été entièrement traité.
 
 ---
 
@@ -14,19 +14,19 @@ Cette révision ferme l'ensemble de ces points. Vingt-et-un points sont recensé
 
 | ID | Point critique | Risque initial | Résolution | Document |
 |---|---|---|---|---|
-| C-01 | Sémantique du versionnement du Course après publication non définie | Critique | Un Course publié est immuable ; les tables de travail (`courses`, `modules`, `lessons`) représentent toujours le brouillon courant ; `course_versions.snapshot` est la vérité figée servie aux inscrits | `05_VERSIONNEMENT_PEDAGOGIQUE.md` |
-| C-02 | Contenu réel du snapshot `course_versions` imprécis (Activity ? Resources ?) | Élevé | `Activity` retirée du périmètre V1 ; le snapshot contient Course + Modules + Lessons + Resources + ordre + `is_required` + `requires_submission` | `05_VERSIONNEMENT_PEDAGOGIQUE.md` |
+| C-01 | Sémantique du versionnement du Course après publication non définie | Critique | La version publiée (`course_versions`) est immuable ; la ligne `courses` peut repasser en édition sans modifier les versions historiques ; les tables de travail (`courses`, `modules`, `lessons`) représentent toujours le brouillon courant ; `course_versions.snapshot` est la vérité figée servie aux inscrits | `05_VERSIONNEMENT_PEDAGOGIQUE.md` |
+| C-02 | Contenu réel du snapshot `course_versions` imprécis (Activity ? Resources ?) | Élevé | `Activity` retirée du périmètre V1 ; le snapshot contient Course + Modules + Lessons + Resources + ordre + `is_required` + `requires_submission` + `media_asset_id` | `05_VERSIONNEMENT_PEDAGOGIQUE.md` |
 | C-03 | Cycle de vie des médias incomplet (état, type, taille, propriétaire, upload abandonné) | Critique | Table `media_assets` dédiée avec machine d'états complète, partagée par Resource/Submission/Feedback | `06_MEDIA_LIFECYCLE.md` |
 | C-04 | Règles métier de la Submission incomplètes (cardinalité, resoumission, annulation, SLA) | Élevé | Cardinalité, resoumission et annulation tranchées explicitement | `04_MACHINES_ETATS_ET_REGLES_METIER.md` §2 |
 | C-05 | Incohérence `PENDING` (traçabilité) vs états normatifs (architecture) | Moyen, révélateur | `PENDING` supprimé partout ; seuls les états normatifs sont utilisés, y compris dans les routes API | `04_MACHINES_ETATS_ET_REGLES_METIER.md`, `08_CONTRAT_API.md` |
 | C-06 | Guardian : âge minimal, unicité, création et acceptation du lien non définis | Élevé | Règles complètes : Guardian ≥ 18 ans, distinct du mineur, lien créé uniquement par Manager/Admin, consentement capturé à la création (V1), révocation possible | `04_MACHINES_ETATS_ET_REGLES_METIER.md` §4 |
 | C-07 | `birth_date` nullable dans le modèle alors que le backlog l'exige obligatoire | Moyen | `birth_date NOT NULL` pour tout compte Learner, aligné modèle/API/validation | `03_MODELE_DE_DONNEES.md` |
-| C-08 | Contraintes relationnelles laissées à la seule couche applicative, sans classification | Élevé | Chaque règle classée explicitement : contrainte DB, policy d'autorisation, ou invariant de domaine vérifié en transaction | `04_MACHINES_ETATS_ET_REGLES_METIER.md` §5 |
+| C-08 | Contraintes relationnelles laissées à la seule couche applicative, sans classification | Élevé | Chaque règle classée explicitement : contrainte DB, policy d'autorisation, ou invariant de domaine vérifié en transaction | `04_MACHINES_ETATS_ET_REGLES_METIER.md` §10 |
 | C-09 | Historisation des assignations Teacher↔Course insuffisante | Moyen | Ajout de `deactivated_at`/`deactivated_by`, unicité de l'assignation active, historique jamais supprimé | `03_MODELE_DE_DONNEES.md` |
 | C-10 | Lien entre progression et contenu versionné non défini | Élevé | La Progress référence la même `course_version_id` que l'Enrollment ; une leçon supprimée d'une nouvelle version n'affecte jamais un inscrit déjà pinné sur l'ancienne version | `04_MACHINES_ETATS_ET_REGLES_METIER.md` §3, `05_VERSIONNEMENT_PEDAGOGIQUE.md` |
 | C-11 | Règles de doublon et d'annulation d'Enrollment absentes | Élevé | Un seul Enrollment `ACTIVE` par Learner/Course (contrainte DB) ; réinscription après annulation = nouvel Enrollment ; fermeture des inscriptions n'affecte jamais les inscrits existants | `04_MACHINES_ETATS_ET_REGLES_METIER.md` §3 |
 | C-12 | Calcul de `COMPLETED` insuffisamment spécifié | Élevé | `lessons.is_required` ajouté ; `COMPLETED` calculé sur les leçons obligatoires de la version pinée par l'Enrollment | `04_MACHINES_ETATS_ET_REGLES_METIER.md` §3 |
-| C-13 | Cardinalité et édition du Feedback non définies | Élevé | Un Feedback actif maximum par Submission ; immuable après publication ; pas d'édition en V1 (limitation assumée, pas un oubli) | `04_MACHINES_ETATS_ET_REGLES_METIER.md` §2 |
+| C-13 | Cardinalité et édition du Feedback non définies | Élevé | Un Feedback actif maximum par Submission ; immuable après publication ; pas d'édition en V1 (limitation assumée, pas un oubli) | `04_MACHINES_ETATS_ET_REGLES_METIER.md` §5 |
 | C-14 | Architecture d'exécution des notifications non définie | Moyen/Élevé | Redis + BullMQ, pattern outbox transactionnel, idempotence des jobs, table `notification_deliveries` | `09_NOTIFICATIONS_ET_JOBS.md` |
 | C-15 | Sécurité et authentification insuffisamment spécifiées | Élevé | Modèle de tokens, politique de mot de passe, rate limiting, CORS/CSP, gestion des secrets, audit | `07_SECURITE_ET_AUTORISATION.md` |
 | C-16 | API : exemples de routes, pas de contrat stable | Élevé | Conventions (pagination, tri, filtres, erreurs, idempotence), liste complète des endpoints, format d'erreur normalisé | `08_CONTRAT_API.md` |
@@ -38,7 +38,7 @@ Cette révision ferme l'ensemble de ces points. Vingt-et-un points sont recensé
 
 ## 3. Documents manquants — décision
 
-L'analyse reçue proposait dix documents complémentaires (`07` à `16` dans sa propre numérotation). Après confrontation avec ce qui était déjà fourni dans `08_DECISIONS_ARCHITECTURALES.md` et `09_SPECIFICATIONS_TECHNIQUES_COMPLEMENTAIRES.md`, la décision retenue est :
+L'analyse reçue proposait dix documents complémentaires (`07` à `16` dans sa propre numérotation). Après confrontation avec ce qui était déjà fourni dans 08_DECISIONS_ARCHITECTURALES.md et 09_SPECIFICATIONS_TECHNIQUES_COMPLEMENTAIRES.md, la décision retenue est :
 
 | Document proposé par l'analyse | Décision |
 |---|---|

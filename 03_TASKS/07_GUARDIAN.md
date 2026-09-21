@@ -1,6 +1,14 @@
 # Guardian
 
-Implémenter T-901, T-901b, T-902 (liste explicite plutôt qu'une plage numérique, pour inclure sans ambiguïté la révocation T-901b — même correction que pour T-401b, voir `FINAL_AUDIT.md`).
+Le domaine Guardian est volontairement livré en deux temps pour respecter les dépendances :
 
-## Acceptance
-Guardian >=18, mineur distinct, lien unique et tracé, révocation non rétroactive, lecture seule.
+- **Phase 6 — prérequis métier** : T-901 et T-901b (création/révocation des liens, policies).
+- **Phase 10 — consultation** : T-902, car la lecture de Progress/Feedbacks dépend de T-307 et T-506.
+
+Aucun module aval ne doit contourner le domaine Guardian pour satisfaire INV-08.
+
+## Acceptance Phase 6
+Guardian >=18, mineur distinct, rôle Guardian, lien unique et tracé, révocation non rétroactive.
+
+## Acceptance Phase 10
+Consultation lecture seule, uniquement pour les mineurs liés par un Guardian actif.

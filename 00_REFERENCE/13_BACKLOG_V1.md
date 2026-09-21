@@ -29,12 +29,12 @@
 
 | ID | Tâche | Prio | Dépendances | Sensibilité | Critère d'acceptation |
 |---|---|---|---|---|---|
-| T-701 | Créer un cours en brouillon | P0 | T-101 | Standard | Statut DRAFT |
+| T-701 | Créer un cours en brouillon | P0 | T-103 | Standard | Statut DRAFT ; rôle Content Author/Manager/Admin autorisé |
 | T-702 | Structurer modules/leçons ordonnés, `is_required` | P0 | T-701 | Standard | Ordonnancement fonctionnel |
 | T-707 | Assigner un ou plusieurs enseignants | P0 | T-701 | Sensible | INV-09, unicité active (`03_MODELE_DE_DONNEES.md`) |
 | T-707b | Désassigner un enseignant | P1 | T-707 | Sensible | `deactivated_at/by` renseignés, historique conservé (C-09) |
-| T-703 | Publier un cours (transaction atomique) | P0 | T-702, T-707 | Sensible | Snapshot `course_versions` créé, INV-02 révisé appliqué |
-| T-708 | Retour en édition d'un cours publié | P0 | T-703 | Sensible | Retrait du catalogue, aucun effet sur les inscrits existants (`05_VERSIONNEMENT_PEDAGOGIQUE.md`) |
+| T-703 | Revoir puis publier un cours (transactions atomiques) | P0 | T-702, T-707 | Sensible | `DRAFT → IN_REVIEW` via `course.review`, puis `IN_REVIEW → PUBLISHED` ; snapshot `course_versions` créé atomiquement ; INV-02 appliqué |
+| T-708 | Retour en édition d'un cours publié | P0 | T-703 | Sensible | `PUBLISHED → IN_REVIEW` via endpoint dédié ; retrait du catalogue ; aucun effet sur les inscrits existants (`05_VERSIONNEMENT_PEDAGOGIQUE.md`) |
 | T-709 | Consulter l'historique des versions | P2 | T-708 | Standard | Liste chronologique, append-only |
 
 ## EPIC 4 — Media & Learning Delivery
@@ -67,10 +67,10 @@
 | ID | Tâche | Prio | Dépendances | Sensibilité | Critère d'acceptation |
 |---|---|---|---|---|---|
 | T-501 | Soumettre une pratique (idempotent) | P0 | T-301b, EPIC 5 | Sensible | Unicité active par leçon (C-21) |
-| T-503 | Vérifier l'éligibilité (Guardian si mineur) | P0 | T-106, T-901 | Sensible | Blocage INV-08 |
-| T-504 | File d'attente filtrable (cours assignés) | P0 | T-501, T-707 | Sensible | Filtrage INV-07 |
+| T-503 | Vérifier l'éligibilité (Guardian si mineur) | P0 | T-106, T-901 | Sensible | Blocage INV-08 avant toute nouvelle Submission |
+| T-504 | File d'attente filtrable et prise en charge (cours assignés) | P0 | T-501, T-707 | Sensible | Filtrage INV-07 ; ouverture explicite `SUBMITTED → IN_REVIEW` |
 | T-505 | Enregistrer une réponse (côte-à-côte, Niveau 2) | P0 | T-504 | Standard | Conforme spécification Niveau 2 |
-| T-506 | Valider/publier le feedback | P0 | T-505 | Sensible | Cardinalité un feedback publié max (C-13), notification |
+| T-506 | Valider/publier le feedback | P0 | T-505 | Sensible | `DRAFT → PUBLISHED`, cardinalité un feedback publié max (C-13), événement de notification |
 | T-507 | Historique des feedbacks | P1 | T-506 | Standard | Liste chronologique |
 | T-508 | Alerte de surcharge enseignant | P1 | T-504 | Standard | Déclenchement au seuil configuré |
 | T-509 | Annuler une soumission (avant prise en charge) | P1 | T-501 | Standard | Refusé si `IN_REVIEW` |
@@ -79,7 +79,7 @@
 
 | ID | Tâche | Prio | Dépendances | Sensibilité | Critère d'acceptation |
 |---|---|---|---|---|---|
-| T-601 | Dashboard de progression détaillé | P1 | T-307 | Standard | Cours en cours, temps passé, derniers feedbacks |
+| T-601 | Dashboard de progression détaillé | P1 | T-307 | Standard | Endpoint/dashboard avec cours en cours, `time_spent_seconds`, derniers feedbacks |
 
 ## EPIC 8 — Guardian
 
@@ -87,13 +87,13 @@
 |---|---|---|---|---|---|
 | T-901 | Lier un Guardian à un mineur | P0 | T-106 | Sensible | Âge ≥18, distinction, unicité, `created_by` tracé |
 | T-901b | Révoquer un lien Guardian | P1 | T-901 | Sensible | Non-rétroactif, blocage des futures actions du mineur si dernier lien |
-| T-902 | Consultation lecture seule (progression/feedbacks) | P0 | T-901, T-307 | Sensible | Aucune action d'écriture possible |
+| T-902 | Consultation Guardian lecture seule (progression/feedbacks) | P0 | T-901, T-307 | Sensible | Aucune action d'écriture possible ; périmètre limité aux liens actifs |
 
 ## EPIC 9 — Administration & Reporting
 
 | ID | Tâche | Prio | Dépendances | Sensibilité | Critère d'acceptation |
 |---|---|---|---|---|---|
-| T-701b | Gérer les utilisateurs | P1 | T-103 | Sensible | CRUD complet, historisé |
+| T-701b | Gérer les utilisateurs | P1 | T-103 | Sensible | Liste et mise à jour des utilisateurs/rôles/statut, historisées |
 | T-705 | KPIs de base | P1 | EPIC 4, 7 | Standard | Dashboard cohérent |
 | T-706 | Configurer les paramètres système | P1 | — | Sensible | `settings` éditable |
 | T-710 | Journal d'audit | P1 | — | Sensible | Actions sensibles tracées (voir `07_SECURITE_ET_AUTORISATION.md` §6) |

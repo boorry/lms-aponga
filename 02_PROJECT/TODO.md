@@ -14,16 +14,16 @@
 
 ## P0 développement
 - [ ] Foundation
-- [ ] Data model *(précède Identity — corrigé lors de l'audit final, voir `FINAL_AUDIT.md`)*
+- [ ] Data model
 - [ ] Identity
 - [ ] Learning/versioning
-- [ ] Media
+- [ ] Media backend
+- [ ] Guardian foundation
 - [ ] Enrollment/progress
-- [ ] Submission/feedback
-- [ ] Guardian
 - [ ] Notifications
-- [ ] Admin/reporting
-- [ ] Frontend
+- [ ] Submission/feedback
+- [ ] Admin/reporting + Guardian consultation
+- [ ] Frontend + Learning Delivery UI
 - [ ] E2E
 - [ ] Deployment
 

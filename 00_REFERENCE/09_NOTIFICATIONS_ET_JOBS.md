@@ -48,17 +48,23 @@ GuardianLinkDeactivated
 
 ```text
 notification_deliveries
-  id, event_id, channel (email), recipient_user_id, template_code,
+  id, event_id FK → domain_events, channel (email), recipient_user_id, template_code,
   status (QUEUED / SENT / FAILED), attempt_count, last_error, sent_at, created_at
 ```
 
 ## 5. Idempotence des jobs
 
-Chaque job de notification est identifié de façon stable (par `event_id` + `channel` + `recipient_user_id`) pour qu'un rejouage (retry, redémarrage du worker) ne produise jamais d'envoi en double non maîtrisé — une contrainte d'unicité sur ce triplet dans `notification_deliveries` empêche une double insertion.
+Chaque job de notification utilise un identifiant stable dérivé de `event_id` + `channel` + `recipient_user_id` pour qu'un rejouage (retry, redémarrage du worker) ne produise jamais d'envoi en double non maîtrisé — une contrainte d'unicité sur ce triplet dans `notification_deliveries` empêche une double insertion.
 
-## 6. Ce que ce document ferme
+## 7. Ce que ce document ferme
 
 | Point de l'analyse critique | Fermé par |
 |---|---|
-| C-14 — architecture d'exécution des notifications non définie | §1 à §5 |
+| C-14 — architecture d'exécution des notifications non définie | §1 à §6 |
 | C-20 — garantie de non-perte de l'événement entre écriture DB et mise en file | §2 |
+
+
+## 6. Règle de traitement concurrent
+
+Le dispatcher utilise un claim court (`claimed_at` + `claim_token`) pour éviter que plusieurs instances traitent simultanément le même événement. **`dispatched_at` n'est renseigné qu'après confirmation de l'enfilage BullMQ.** Si le processus tombe après l'enfilage mais avant l'écriture de `dispatched_at`, l'événement peut être remis en file ; le job BullMQ utilise `event_id` comme identifiant stable et le traitement doit rester idempotent. Une panne avant l'enfilage ne peut donc pas perdre définitivement l'événement.
+

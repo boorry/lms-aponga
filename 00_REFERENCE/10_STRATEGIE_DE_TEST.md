@@ -23,11 +23,11 @@ unitaire (règles métier, invariants)      — la base, rapides et nombreux
 
 ## 3. Ce qui doit obligatoirement être testé automatiquement
 
-- **Chaque règle métier de `04_MACHINES_ETATS_ET_REGLES_METIER.md`** (transitions d'état autorisées et refusées, contraintes d'unicité, cardinalités).
+- **Chaque règle métier de `04_MACHINES_ETATS_ET_REGLES_METIER.md`**, y compris les transitions API explicites `DRAFT → IN_REVIEW`, `SUBMITTED → IN_REVIEW` et `DRAFT → PUBLISHED`. (transitions d'état autorisées et refusées, contraintes d'unicité, cardinalités).
 - **Chaque permission et chaque règle d'autorisation objet de `07_SECURITE_ET_AUTORISATION.md`** — un test qui vérifie qu'un accès non autorisé est bien refusé, pas seulement qu'un accès autorisé fonctionne.
 - **Chaque tâche marquée « Sensible » dans `13_BACKLOG_V1.md`.**
 - **Le cycle de vie complet d'un média** (upload → complete → accès → expiration de l'URL signée).
-- **L'idempotence** des opérations listées en `04_MACHINES_ETATS_ET_REGLES_METIER.md` §11 (rejouer la même requête avec la même `Idempotency-Key` ne doit pas produire d'effet en double).
+- **L'idempotence** des opérations listées en `04_MACHINES_ETATS_ET_REGLES_METIER.md` §12 (rejouer la même requête avec la même `Idempotency-Key` ne doit pas produire d'effet en double).
 - **La non-perte d'un événement métier** (`domain_events`) même en cas d'échec du worker de notification.
 
 ## 4. Parcours e2e obligatoires avant le pilote
@@ -50,3 +50,14 @@ Chaque invariant listé en `02_ARCHITECTURE_CONCEPTION.md`, chaque règle listé
 ## 6. Condition de recette
 
 Aucune tâche P0 de `13_BACKLOG_V1.md` n'est considérée terminée sans : un test automatisé couvrant son critère d'acceptation, et pour les parcours critiques listés en §4, une validation manuelle en conditions réelles (voir `14_PLAN_VALIDATION.md`).
+
+
+## 7. Tests d'authentification persistante
+
+Les tests doivent vérifier :
+- rotation et révocation individuelle des refresh tokens ;
+- impossibilité de réutiliser un refresh token déjà utilisé ;
+- expiration/révocation des tokens de vérification email ;
+- expiration/usage unique des tokens de reset password ;
+- aucun token persistant stocké en clair ;
+- `email_verified_at` requis avant première connexion.

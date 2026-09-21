@@ -7,13 +7,13 @@
 ## 1. Course
 
 ```text
-DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED
+DRAFT → IN_REVIEW → PUBLISHED
+PUBLISHED → IN_REVIEW / DRAFT
 ```
 
 - Ces états s'appliquent à la ligne `courses`, qui représente **toujours le brouillon de travail courant** — jamais la version historique servie aux inscrits (voir `05_VERSIONNEMENT_PEDAGOGIQUE.md` pour le détail complet de cette distinction, centrale au système).
 - Passage à `PUBLISHED` : crée un `course_versions` (append-only), met à jour `courses.published_version_id` et incrémente `current_version_number`. Transaction obligatoire (publication + snapshot atomiques).
 - Un cours `PUBLISHED` peut repasser en édition (retour effectif à un statut de travail) : il est alors retiré du catalogue public et fermé aux nouvelles inscriptions, **sans effet sur les inscrits existants**, qui continuent de consulter la version qu'ils ont pinée à l'inscription.
-- `ARCHIVED` : cours définitivement retiré du catalogue. Les inscrits existants gardent l'accès à leur version pinée, sauf décision explicite contraire de l'Administration (non automatisée en V1).
 
 ## 2. Submission
 
@@ -21,6 +21,8 @@ DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED
 SUBMITTED → IN_REVIEW → FEEDBACK_GIVEN
 SUBMITTED → CANCELLED
 ```
+
+La transition `SUBMITTED → IN_REVIEW` est explicite via `POST /teacher/submissions/:id/start-review`. Une lecture de la Submission ne change jamais son état.
 
 Règles fermées (C-04, C-21) :
 
@@ -69,6 +71,8 @@ Règles fermées (C-06) :
 DRAFT → PUBLISHED
 ```
 
+La création du brouillon et sa publication sont deux actions API distinctes. Le Feedback `DRAFT` est rattaché à une Submission `IN_REVIEW`. La publication produit `FeedbackPublished` et fait passer la Submission `IN_REVIEW → FEEDBACK_GIVEN` dans une transaction unique.
+
 Règles fermées (C-13) :
 
 - Un Teacher peut enregistrer une réponse (`DRAFT`, non visible du Learner) avant de la valider (`PUBLISHED`, déclenche la notification et devient visible).
@@ -102,7 +106,21 @@ INITIATED → UPLOADING → FAILED
 READY → DELETED
 ```
 
-## 9. Classification des règles relationnelles (C-08)
+## 9. Registre normatif des invariants
+
+| ID | Énoncé normatif | Test minimal |
+|---|---|---|
+| INV-01 | Aucun accès au contenu d'une Lesson protégée sans Enrollment `ACTIVE` correspondant. | Accès sans enrollment / enrollment CANCELLED refusé |
+| INV-02 | Un Course ne peut passer à `PUBLISHED` que s'il possède au moins un Teacher activement assigné ; la publication et le snapshot sont atomiques. | Publication sans Teacher refusée ; rollback transactionnel |
+| INV-03 | Identifiant retiré : aucune règle normative V1 n'est associée à cet identifiant. Il ne doit plus être réutilisé. | Scan de traçabilité sans référence normative |
+| INV-04 | Identifiant retiré : aucune règle normative V1 n'est associée à cet identifiant. Il ne doit plus être réutilisé. | Scan de traçabilité sans référence normative |
+| INV-05 | Identifiant retiré : aucune règle normative V1 n'est associée à cet identifiant. Il ne doit plus être réutilisé. | Scan de traçabilité sans référence normative |
+| INV-06 | Une URL signée de streaming vidéo est temporaire et sa durée maximale V1 est de 1 heure. | Accès expiré refusé |
+| INV-07 | Un Teacher ne peut consulter ou prendre en charge une Submission que dans le périmètre d'un Course où son assignation est active. Manager/Administrator disposent du périmètre élargi documenté. | Teacher non assigné reçoit 403 |
+| INV-08 | Un Learner de moins de 15 ans doit avoir au moins un Guardian actif pour toute nouvelle inscription ou nouvelle Submission. La révocation n'annule pas les accès déjà actifs. | Parcours mineur sans Guardian refusé |
+| INV-09 | Une seule assignation active existe pour un couple (Course, Teacher), et le Teacher doit porter le rôle `teacher`. | Double assignation active refusée |
+
+## 10. Classification des règles relationnelles (C-08)
 
 Chaque règle mentionnée par l'analyse critique comme « laissée à la couche applicative » est classée ici explicitement, pour qu'un développeur sache où l'implémenter :
 
@@ -114,10 +132,10 @@ Chaque règle mentionnée par l'analyse critique comme « laissée à la couche 
 | `guardianships.minor_user_id` doit être Learner | Policy applicative | Service Guardianship, à la création |
 | `guardianships.guardian_user_id ≠ minor_user_id` | **Contrainte DB** (CHECK) | Migration de schéma |
 | `progress.lesson_id` doit appartenir à la `course_version_id` de l'Enrollment | **Contrainte DB** (via colonne dénormalisée `progress.course_version_id` + validation applicative à l'écriture) | Service Progress, à la création/mise à jour |
-| `submissions.lesson_id` doit appartenir à un cours auquel le Learner est inscrit (`course_version_id` cohérent) | Invariant de domaine, vérifié en transaction applicative | Service Submission, à la création |
+| `submissions.enrollment_id` doit appartenir au Learner et porter la même `course_version_id` que la Submission ; `lesson_id` doit appartenir à cette version | **Invariant de domaine**, vérifié en transaction applicative | Service Submission, à la création |
 | `feedback.teacher_id` doit avoir une assignation active **au moment de l'action** | Policy d'autorisation, vérifiée uniquement à la création (un Feedback déjà `PUBLISHED` reste valide même si l'assignation est ensuite désactivée) | Service Feedback, à la création |
 
-## 10. Transactions obligatoires
+## 11. Transactions obligatoires
 
 Les opérations suivantes doivent être exécutées dans une transaction unique (tout ou rien) :
 
@@ -129,7 +147,7 @@ Les opérations suivantes doivent être exécutées dans une transaction unique 
 - Activation/désactivation d'un Guardianship.
 - Écriture d'une donnée métier + écriture de l'événement destiné aux notifications (voir `09_NOTIFICATIONS_ET_JOBS.md`).
 
-## 11. Idempotence obligatoire
+## 12. Idempotence obligatoire
 
 Les opérations suivantes, susceptibles d'être rejouées par le client (réseau instable, double-clic) doivent être idempotentes (via un `Idempotency-Key`, voir `08_CONTRAT_API.md`) :
 

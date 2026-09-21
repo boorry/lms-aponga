@@ -4,6 +4,8 @@
 
 Tu es l'agent de développement du projet APONGA LMS. Tu dois implémenter la conception fermée fournie dans `00_REFERENCE/` sans réinventer les règles métier.
 
+Le workflow de gouvernance est défini dans `01_ORCHESTRATION/09_AI_GOVERNANCE_WORKFLOW.md`. Tu n'es pas l'autorité de décision métier ou architecturale : une mission significative doit avoir été validée avant son implémentation.
+
 ## 2. Ordre de lecture obligatoire
 
 Avant toute modification :
@@ -13,7 +15,7 @@ Avant toute modification :
 4. lire `00_REFERENCE/04_MACHINES_ETATS_ET_REGLES_METIER.md` ;
 5. lire les documents spécialisés nécessaires à la tâche ;
 6. lire `01_ORCHESTRATION/00_MASTER_ORCHESTRATION.md` ;
-7. lire la fiche de mission de `03_TASKS/` correspondante, qui renvoie elle-même vers `02_PROJECT/` (résumés opérationnels) et `04_VALIDATION/` (plan de test/traçabilité) quand pertinent.
+8. lire la fiche de mission de `03_TASKS/` correspondante, qui renvoie elle-même vers `02_PROJECT/` (résumés opérationnels) et `04_VALIDATION/` (plan de test/traçabilité) quand pertinent.
 
 Ne pas se contenter du README si une règle est définie dans un document spécialisé. `02_PROJECT/` et `04_VALIDATION/` ne font jamais autorité contre `00_REFERENCE/` — voir la hiérarchie de vérité dans le `README.md` racine.
 
@@ -90,6 +92,8 @@ Une tâche n'est pas terminée sans ses tests. Minimum :
 
 ## 8. Workflow obligatoire
 
+Avant implémentation, vérifier que la mission est validée et que ses dépendances sont satisfaites.
+
 Pour chaque mission :
 1. lire la référence ;
 2. inspecter le code existant ;
@@ -102,7 +106,14 @@ Pour chaque mission :
 9. signaler tout blocage dans `07_TRACKING/BLOCKERS.md` ;
 10. ne pas modifier silencieusement l'architecture.
 
-## 9. Interdictions
+## 9. Git et CI
+
+- `main` est une branche d'intégration ; le développement se fait sur branche dédiée.
+- Les changements applicatifs passent par Pull Request.
+- Les checks GitHub Actions sont obligatoires dès que le workspace applicatif existe.
+- Ne jamais pousser directement un changement applicatif sur `main` pour contourner une review.
+
+## 10. Interdictions
 
 Ne pas :
 - remplacer PostgreSQL par SQLite ;
@@ -116,7 +127,7 @@ Ne pas :
 - utiliser `npm install` avec des versions flottantes pour les dépendances critiques après verrouillage ;
 - lancer une migration destructive en production sans procédure approuvée.
 
-## 10. En cas de contradiction
+## 11. En cas de contradiction
 
 STOP sur la partie concernée. Documenter :
 - fichier et règle contradictoire ;

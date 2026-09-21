@@ -26,7 +26,7 @@ Learner, Teacher, Content Author, Academy Manager, Administrator, Guardian — v
 
 | Entité | États |
 |---|---|
-| Course | `DRAFT → IN_REVIEW → PUBLISHED → ARCHIVED` |
+| Course | `DRAFT → IN_REVIEW → PUBLISHED`, puis retour explicite en édition |
 | Enrollment | `ACTIVE → COMPLETED` / `ACTIVE → CANCELLED` |
 | Submission | `SUBMITTED → IN_REVIEW → FEEDBACK_GIVEN` / `SUBMITTED → CANCELLED` |
 | Feedback | `DRAFT → PUBLISHED` |

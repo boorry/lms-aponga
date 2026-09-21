@@ -1,24 +1,23 @@
 # 08 — Contrat API — APONGA LMS
 
-**Statut : normatif.** Ferme C-05 et C-16. Ce document est la référence jusqu'à la génération d'un contrat OpenAPI à partir du code, qui en deviendra alors la source de vérité vivante (sans contredire les décisions ci-dessous).
-
----
+**Statut : normatif.** Ce contrat est figé avant le développement. Les DTO/OpenAPI générés à partir du code doivent rester conformes à ce document ; ils deviennent la source de vérité vivante après génération, sans pouvoir contredire les décisions métier.
 
 ## 1. Conventions générales
 
 | Sujet | Convention |
 |---|---|
 | Base path | `/api/v1` |
-| Authentification | Bearer access token (`Authorization: Bearer ...`) ou cookie de session selon le flux |
-| Pagination | `?page=1&pageSize=20` (défaut 20, max 100) ; réponse enveloppée : `{ "data": [...], "meta": { "page": 1, "pageSize": 20, "total": 134 } }` |
-| Tri | `?sort=field` ou `?sort=-field` (ordre décroissant) |
+| Authentification | Bearer access token ; refresh token opaque en cookie `httpOnly` |
+| Pagination | `?page=1&pageSize=20` (défaut 20, max 100) ; `{ data, meta }` |
+| Tri | `?sort=field` ou `?sort=-field` |
 | Filtres | `?filter[field]=value` |
-| Idempotence | En-tête `Idempotency-Key` obligatoire sur : création d'Enrollment, finalisation d'upload média, création de Submission, publication de Course |
-| Versioning | Le numéro de version est dans le chemin (`/v1`), pas dans un en-tête |
+| Idempotence | `Idempotency-Key` obligatoire sur Enrollment, media complete, Submission et publication de Course |
+| Erreur de clé réutilisée avec payload différent | HTTP 409 |
+| Versioning | `/api/v1` |
 
-## 2. États autorisés dans les réponses API
+## 2. États autorisés
 
-**Aucune route ne doit jamais renvoyer ou accepter `PENDING`** comme statut de Submission (C-05). Seuls les états listés dans `04_MACHINES_ETATS_ET_REGLES_METIER.md` sont valides, partout.
+Les états sont exclusivement ceux de `04_MACHINES_ETATS_ET_REGLES_METIER.md`. `PENDING` n'est jamais un statut de Submission.
 
 ## 3. Format d'erreur
 
@@ -31,18 +30,18 @@
 }
 ```
 
-| Code HTTP | Usage |
+| Code | Usage |
 |---|---|
 | 400 | Payload invalide |
 | 401 | Non authentifié |
-| 403 | Permission insuffisante ou hors périmètre objet |
-| 404 | Ressource inexistante ou non visible pour l'utilisateur courant |
-| 409 | Conflit métier (ex. Enrollment déjà actif) |
-| 422 | Règle métier non satisfaite (distincte d'une simple erreur de validation) |
-| 429 | Limite de fréquence atteinte |
+| 403 | Permission insuffisante ou hors périmètre |
+| 404 | Ressource inexistante ou non visible |
+| 409 | Conflit métier ou clé d'idempotence incompatible |
+| 422 | Règle métier non satisfaite |
+| 429 | Limite de fréquence |
 | 500 | Erreur inattendue |
 
-## 4. Endpoints par domaine
+## 4. Endpoints
 
 ### Identity
 ```text
@@ -50,13 +49,14 @@ POST /auth/register
 POST /auth/login
 POST /auth/refresh
 POST /auth/logout
+POST /auth/verify-email
 POST /auth/forgot-password
 POST /auth/reset-password
 GET  /users/me
 PATCH /users/me
 ```
 
-**Rôle par défaut à l'inscription** *(ajouté lors de l'audit final — non spécifié jusqu'ici, voir `FINAL_AUDIT.md`)* : `POST /auth/register` attribue toujours et uniquement le rôle `learner`. Aucun autre rôle ne peut être obtenu par auto-inscription. Teacher, Content Author, Academy Manager, Administrator et Guardian sont exclusivement attribués par un Administrator via `PATCH /admin/users/{id}` (voir §4 Administration). Le tout premier compte Administrator est créé par le seed de développement (`01_DATA_MODEL.md`), jamais par auto-inscription ni promotion automatique.
+`POST /auth/register` attribue uniquement le rôle `learner`. Les autres rôles sont attribués par un Administrator ; le Manager peut gérer les rôles non-administrator selon la matrice de sécurité. Le premier Administrator est créé par le seed de développement.
 
 ### Catalogue
 ```text
@@ -67,71 +67,90 @@ GET /courses/:id/versions
 
 ### Learning Design & assignation
 ```text
-POST  /courses
-PATCH /courses/:id
-POST  /courses/:id/publish
-POST  /courses/:id/teachers
+POST   /courses
+PATCH  /courses/:id
+POST   /courses/:id/submit-review
+POST   /courses/:id/publish
+POST   /courses/:id/return-to-edit
+POST   /courses/:id/teachers
 DELETE /courses/:id/teachers/:teacherId
-PATCH /courses/:id/enrollment-status
+PATCH  /courses/:id/enrollment-status
 ```
+
+`POST /courses/:id/submit-review` effectue uniquement `DRAFT → IN_REVIEW` et exige `course.review`. `POST /courses/:id/return-to-edit` effectue uniquement `PUBLISHED → IN_REVIEW` et retire immédiatement le cours du catalogue. `PATCH /courses/:id` ne peut jamais modifier directement `status`, `published_version_id` ou `current_version_number`.
 
 ### Enrollment
 ```text
 POST /courses/:id/enrollment
 GET  /enrollments/me
+GET  /admin/enrollments
 POST /admin/enrollments
 ```
 
-### Learning Delivery
+### Learning Delivery / Progress
 ```text
 GET  /courses/:id/lessons/:lessonId
 POST /lessons/:lessonId/progress
 GET  /enrollments/:id/progress
+GET  /learners/me/dashboard
 GET  /lessons/:lessonId/resources/:resourceId/access
 ```
 
-### Submission / Feedback
+Le payload de progression peut mettre à jour `status` et `time_spent_seconds`. La durée cumulée ne peut pas diminuer.
+
+### Submission / Feedback / Media
 ```text
 POST /media/upload-url
 POST /media/:id/complete
+
 POST /submissions
+GET  /submissions/me
 POST /submissions/:id/cancel
 GET  /teacher/submissions
+POST /teacher/submissions/:id/start-review
+
 POST /submissions/:id/feedback
+POST /feedbacks/:id/publish
 GET  /learners/me/feedbacks
+
 GET  /submissions/:id/access
 GET  /feedbacks/:id/access
 ```
 
+`POST /submissions/:id/feedback` crée ou modifie uniquement un Feedback `DRAFT`. `POST /feedbacks/:id/publish` effectue `DRAFT → PUBLISHED`, rend le feedback visible et produit l'événement de notification.
+
+`POST /teacher/submissions/:id/start-review` effectue `SUBMITTED → IN_REVIEW`. Une simple lecture ne change jamais l'état d'une Submission.
+
 ### Guardian
 ```text
-POST /admin/guardianships
+POST   /admin/guardianships
 DELETE /admin/guardianships/:id
-GET  /guardian/minors
-GET  /guardian/minors/:minorId/progress
-GET  /guardian/minors/:minorId/feedbacks
+GET    /guardian/minors
+GET    /guardian/minors/:minorId/progress
+GET    /guardian/minors/:minorId/feedbacks
 ```
 
 ### Administration
 ```text
-GET/PATCH /admin/users
-GET/PATCH /admin/settings
-GET /admin/audit-log
-GET /admin/reports/kpis
+GET   /admin/users
+PATCH /admin/users/:id
+GET   /admin/settings
+PATCH /admin/settings
+GET   /admin/audit-log
+GET   /admin/reports/kpis
 ```
 
 ## 5. Permission et idempotence par endpoint
 
-*(section ajoutée lors de l'audit final : la liste d'endpoints ci-dessus donnait la méthode et l'URL, mais pas systématiquement la permission requise — voir `FINAL_AUDIT.md`. Les schémas complets de payload/réponse restent volontairement différés à la génération OpenAPI à partir des DTO NestJS au moment du code : les lister à la main ici serait long, redondant avec le code, et rapidement obsolète. Permission et idempotence, en revanche, sont des décisions d'architecture qui doivent être figées avant le code.)*
-
-| Méthode | Endpoint | Permission requise | Idempotent |
+| Méthode | Endpoint | Permission | Idempotent |
 |---|---|---|---|
 | POST | `/auth/register` | Public | Non |
 | POST | `/auth/login` | Public | Non |
-| POST | `/auth/refresh` | Self (refresh token valide) | Non |
+| POST | `/auth/refresh` | Self | Non |
 | POST | `/auth/logout` | Self | Non |
+| POST | `/auth/verify-email` | Public, token | Non |
 | POST | `/auth/forgot-password` | Public | Non |
-| POST | `/auth/reset-password` | Public (token à usage unique) | Non |
+| POST | `/auth/reset-password` | Public, token | Non |
 | GET | `/users/me` | Self | — |
 | PATCH | `/users/me` | Self | Non |
 | GET | `/courses` | Public | — |
@@ -139,23 +158,30 @@ GET /admin/reports/kpis
 | GET | `/courses/:id/versions` | `course.edit` | — |
 | POST | `/courses` | `course.create` | Non |
 | PATCH | `/courses/:id` | `course.edit` | Non |
-| POST | `/courses/:id/publish` | `course.publish` | **Oui** (`Idempotency-Key`) |
+| POST | `/courses/:id/submit-review` | `course.review` | Non |
+| POST | `/courses/:id/publish` | `course.publish` | Oui |
+| POST | `/courses/:id/return-to-edit` | `course.edit` | Non |
 | POST | `/courses/:id/teachers` | `course_teacher.manage` | Non |
 | DELETE | `/courses/:id/teachers/:teacherId` | `course_teacher.manage` | Non |
 | PATCH | `/courses/:id/enrollment-status` | `enrollment.manage_status` | Non |
-| POST | `/courses/:id/enrollment` | `enrollment.create` | **Oui** (`Idempotency-Key`) |
+| POST | `/courses/:id/enrollment` | `enrollment.create` | Oui |
 | GET | `/enrollments/me` | `enrollment.read_own` | — |
-| POST | `/admin/enrollments` | `enrollment.create` (portée administrateur) | **Oui** (`Idempotency-Key`) |
-| GET | `/courses/:id/lessons/:lessonId` | `enrollment.read_own` (INV-01) | — |
+| GET | `/admin/enrollments` | `enrollment.read_all` | — |
+| POST | `/admin/enrollments` | `enrollment.create` + admin scope | Oui |
+| GET | `/courses/:id/lessons/:lessonId` | `enrollment.read_own` | — |
 | POST | `/lessons/:lessonId/progress` | `progress.write_own` | Non |
 | GET | `/enrollments/:id/progress` | `progress.read_own` | — |
+| GET | `/learners/me/dashboard` | `progress.read_own` + `feedback.read_own` | — |
 | GET | `/lessons/:lessonId/resources/:resourceId/access` | `media.access` | — |
 | POST | `/media/upload-url` | `media.upload` | Non |
-| POST | `/media/:id/complete` | `media.upload` | **Oui** (`Idempotency-Key`) |
-| POST | `/submissions` | `submission.create` | **Oui** (`Idempotency-Key`) |
+| POST | `/media/:id/complete` | `media.upload` | Oui |
+| POST | `/submissions` | `submission.create` | Oui |
+| GET | `/submissions/me` | `submission.read_own` | — |
 | POST | `/submissions/:id/cancel` | `submission.cancel_own` | Non |
 | GET | `/teacher/submissions` | `submission.read_assigned` | — |
-| POST | `/submissions/:id/feedback` | `feedback.create` + `feedback.publish` | Non |
+| POST | `/teacher/submissions/:id/start-review` | `submission.review` | Non |
+| POST | `/submissions/:id/feedback` | `feedback.create` | Non |
+| POST | `/feedbacks/:id/publish` | `feedback.publish` | Non |
 | GET | `/learners/me/feedbacks` | `feedback.read_own` | — |
 | GET | `/submissions/:id/access` | `media.access` | — |
 | GET | `/feedbacks/:id/access` | `media.access` | — |
@@ -164,20 +190,28 @@ GET /admin/reports/kpis
 | GET | `/guardian/minors` | `guardian.read_minor_progress` | — |
 | GET | `/guardian/minors/:minorId/progress` | `guardian.read_minor_progress` | — |
 | GET | `/guardian/minors/:minorId/feedbacks` | `guardian.read_minor_progress` | — |
-| GET/PATCH | `/admin/users` | `admin.user.manage` | Non |
-| GET/PATCH | `/admin/settings` | `admin.settings.manage` | Non |
+| GET | `/admin/users` | `admin.user.manage` | — |
+| PATCH | `/admin/users/:id` | `admin.user.manage` | Non |
+| GET | `/admin/settings` | `admin.settings.manage` | — |
+| PATCH | `/admin/settings` | `admin.settings.manage` | Non |
 | GET | `/admin/audit-log` | `admin.audit.read` | — |
 | GET | `/admin/reports/kpis` | `admin.reports.read` | — |
 
-Toute permission listée ici mais absente de `07_SECURITE_ET_AUTORISATION.md` §2 (ou inversement) est une erreur à signaler dans `07_TRACKING/BLOCKERS.md` avant de coder l'endpoint concerné.
+## 6. Idempotence
 
-## 6. Exigence pour la génération frontend
+Pour chaque endpoint marqué idempotent :
 
-Les noms de routes ci-dessus sont figés. Toute modification passe par une mise à jour de ce document **avant** le développement du frontend correspondant — jamais l'inverse.
+1. la clé est obligatoire ;
+2. la clé est associée à l'utilisateur, l'endpoint et un hash du payload ;
+3. une répétition avec le même hash rejoue la réponse initiale ;
+4. une même clé avec un hash différent retourne `409` ;
+5. la persistance de la clé survit au redémarrage du backend ;
+6. l'opération métier et l'enregistrement nécessaire à son idempotence sont protégés par transaction lorsque le domaine le permet.
 
-## 7. Ce que ce document ferme
+## 7. Exigence frontend
 
-| Point de l'analyse critique | Fermé par |
-|---|---|
-| C-05 — incohérence `PENDING` entre architecture et traçabilité | §2 |
-| C-16 — API en exemples, pas en contrat stable | §1, §3, §4, §5 |
+Les écrans consomment uniquement les routes de ce contrat. Toute modification de route, permission ou statut doit précéder l'implémentation frontend et passer par `05_CHANGE_CONTROL.md`.
+
+## 8. Source OpenAPI
+
+Les DTO NestJS et `@nestjs/swagger` généreront la documentation OpenAPI. Une divergence entre OpenAPI générée et ce contrat est un blocker de validation, pas une invitation à modifier silencieusement le contrat.

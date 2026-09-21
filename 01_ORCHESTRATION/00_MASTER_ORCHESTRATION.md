@@ -4,6 +4,19 @@
 
 Transformer progressivement la conception fermée APONGA LMS en un produit testé, documenté et déployable.
 
+## Pré-Gate — Verrouillage avant développement
+
+Avant toute Phase P0, le repository réel doit avoir été audité selon `01_ORCHESTRATION/09_AI_GOVERNANCE_WORKFLOW.md`.
+
+Conditions obligatoires :
+- audit du dépôt réel par Claude AI ou revue humaine équivalente ;
+- corrections et décisions documentées ;
+- aucun blocker architectural non arbitré ;
+- mission destinée à Claude Code explicitement validée ;
+- baseline Git publiée sur `main`.
+
+Claude Code ne reçoit pas de mission d'implémentation tant que ce pré-gate n'est pas satisfait.
+
 ## À propos des « Gate P » de ce document
 
 Chaque phase ci-dessous se termine par une **Gate Px** (« Phase Gate ») : le critère minimal pour passer à la phase suivante. Ces Gate P sont **distinctes** des **Quality Gates G0–G8** de `03_QUALITY_GATES.md`, qui sont des dimensions transversales (build, données, métier, sécurité, API, média, E2E, production) vérifiées à plusieurs reprises au long du projet, pas des jalons séquentiels. Ne pas confondre `Gate P3` (jalon de la phase 3) et `Quality Gate G3` (dimension « Métier ») : les deux existent, avec des définitions différentes, et se complètent plutôt qu'elles ne se substituent l'une à l'autre.
@@ -36,7 +49,7 @@ Prisma schema (y compris `users`, `roles`, `user_roles` nécessaires à la phase
 
 Mission : `03_TASKS/02_IDENTITY_SECURITY.md`.
 
-Implémenter comptes, rôles, permissions, access/refresh tokens, vérification email, rate limiting, Guardian prerequisites et audit sensible. `POST /auth/register` crée toujours un compte Learner (voir `00_REFERENCE/08_CONTRAT_API.md`) ; tout autre rôle est attribué par un Administrator. Le seed de la phase 2 doit avoir créé le premier compte Administrator (aucun parcours d'auto-promotion n'existe).
+Implémenter comptes, rôles, permissions, access/refresh tokens, vérification email, rate limiting, Guardian prerequisites et audit sensible. `POST /auth/register` crée toujours un compte Learner (voir `00_REFERENCE/08_CONTRAT_API.md`) ; les autres rôles sont attribués selon la matrice de sécurité ; seul le rôle `administrator` est réservé à un Administrator. Le seed de la phase 2 doit avoir créé le premier compte Administrator (aucun parcours d'auto-promotion n'existe).
 
 **Gate P3** : aucune route sensible accessible sans policy valide ; un compte Administrator seedé permet de se connecter et d'attribuer des rôles.
 
@@ -48,53 +61,53 @@ Course, Module, Lesson, Resource, CourseVersion, publication atomique, assignati
 
 **Gate P4** : snapshot immuable et non-rétroactivité démontrées par tests.
 
-## Phase 5 — Media & Learning Delivery
+## Phase 5 — Media & Learning Delivery backend
 
 Mission : `03_TASKS/04_MEDIA_LEARNING_DELIVERY.md`.
 
-Deux volets indissociables, regroupés dans une seule phase comme dans l'EPIC 4 du backlog : (1) le cycle de vie technique des médias — `media_assets`, upload présigné, complete, accès signé (T-1003), R2/Stream, nettoyage des uploads abandonnés (T-301, T-301b, T-311) ; (2) l'expérience de consommation d'une leçon — lecteur vidéo et contrôles (T-302, T-302b), lecture PDF (T-304), mode économie de données (T-305), cache PWA du shell et des métadonnées (T-310).
+Implémenter les capacités backend du cycle média : `T-301`, `T-301b`, `T-302`, `T-304`, `T-311`, `T-1003`. Les éléments UI/PWA (`T-302b`, `T-305`, `T-310`) sont explicitement livrés en Phase 11.
 
-**Gate P5** : upload → complete → access → expiration testé ; lecture vidéo/PDF fonctionnelle ; mode économie de données et cache PWA testés ; aucune vidéo mise en cache hors-ligne (choix fermé, voir `06_MEDIA_LIFECYCLE.md`).
+**Gate P5** : upload → complete → access → expiration testé ; autorisations média testées ; endpoints vidéo/PDF conformes au contrat. Aucun critère frontend n'est requis à ce stade.
 
-## Phase 6 — Enrollment & Progress
+## Phase 6 — Guardian foundation
+
+Mission : `03_TASKS/07_GUARDIAN.md` (volet Phase 6).
+
+Implémenter T-901 et T-901b : création/révocation des liens Guardian et policies nécessaires à INV-08.
+
+**Gate P6** : Guardian >=18, distinction Guardian/mineur, rôle Guardian, unicité, création/révocation et INV-08 testés.
+
+## Phase 7 — Enrollment & Progress
 
 Mission : `03_TASKS/05_ENROLLMENT_PROGRESS.md`.
 
-Enrollment idempotent, pin version, progression, calcul completion.
+Enrollment idempotent, pin version, progression, temps passé et calcul completion.
 
-**Gate P6** : INV-01, INV-08 et cohérence de version couvertes.
+**Gate P7** : INV-01 et INV-08 couverts ; cohérence de version démontrée.
 
-## Phase 7 — Submission & Feedback
-
-Mission : `03_TASKS/06_SUBMISSION_FEEDBACK.md`.
-
-Soumission, file Teacher, feedback, notifications.
-
-**Gate P7** : Teacher ne voit que ses cours assignés ; Guardian/Learner permissions respectées.
-
-## Phase 8 — Guardian
-
-Mission : `03_TASKS/07_GUARDIAN.md`.
-
-Lien, consentement, révocation, lecture seule.
-
-**Gate P8** : parcours mineur sans/avec Guardian couvert.
-
-## Phase 9 — Notifications / Jobs
+## Phase 8 — Notifications / Jobs
 
 Mission : `03_TASKS/08_NOTIFICATIONS.md`.
 
-Outbox, worker, BullMQ, retries, idempotence.
+Outbox transactionnel, worker BullMQ, retries et idempotence.
 
-**Gate P9** : aucun événement métier perdu lors d'une panne worker simulée.
+**Gate P8** : aucun événement métier perdu lors d'une panne worker simulée ; les jobs rejoués ne produisent pas de doublon.
 
-## Phase 10 — Administration / Reporting
+## Phase 9 — Submission & Feedback
 
-Mission : `03_TASKS/09_ADMIN_REPORTING.md`.
+Mission : `03_TASKS/06_SUBMISSION_FEEDBACK.md`.
 
-Utilisateurs, catalogue, KPIs, settings, audit.
+Soumission, prise en charge explicite, feedback brouillon → publié et événements de notification.
 
-**Gate P10** : permissions d'administration testées ; KPIs cohérents avec les données sources ; audit log alimenté sur les actions sensibles.
+**Gate P9** : Teacher ne voit et ne prend en charge que les Submissions autorisées ; Guardian/Learner permissions respectées ; les transitions d'état sont explicites.
+
+## Phase 10 — Administration / Guardian consultation
+
+Missions : `03_TASKS/09_ADMIN_REPORTING.md` et volet Phase 10 de `03_TASKS/07_GUARDIAN.md`.
+
+Utilisateurs, catalogue, KPIs, settings, audit et consultation Guardian.
+
+**Gate P10** : permissions d'administration testées ; KPIs cohérents ; audit log alimenté ; Guardian ne lit que les mineurs liés et ne peut rien écrire.
 
 ## Phase 11 — Frontend
 
@@ -102,7 +115,7 @@ Missions `03_TASKS/10_FRONTEND_PUBLIC_LEARNER.md` à `12_FRONTEND_MANAGER_ADMIN.
 
 Le frontend ne doit consommer que les routes figées du contrat API. Chaque écran implémenté met à jour `02_PROJECT/SCREEN_CONTRACT.md` avec sa route, ses permissions et ses endpoints réellement consommés.
 
-**Gate P11** : responsive, PWA shell, accessibilité de base, parcours critiques Playwright.
+**Gate P11** : responsive, PWA shell, accessibilité de base, contrôles vidéo/PDF, mode économie de données, cache PWA sans vidéo hors-ligne, parcours critiques Playwright.
 
 ## Phase 12 — E2E / Validation
 

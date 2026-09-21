@@ -1,8 +1,12 @@
 # APONGA LMS — Development Orchestration Pack
 
-**Statut : prêt pour le démarrage du développement avec Claude Code.**
+**Statut : kit verrouillé pour le démarrage du développement, après Pré-Gate et validation humaine de la mission.**
 
 Ce pack reprend les 17 documents de conception fournis comme **source de vérité** et ajoute la couche d'orchestration nécessaire au passage à l'implémentation.
+
+## Pré-Gate de développement
+
+Avant de donner une mission d'implémentation à Claude Code, le dépôt réel doit être audité puis verrouillé selon `01_ORCHESTRATION/09_AI_GOVERNANCE_WORKFLOW.md`. Le responsable humain valide les décisions ; les audits et décisions sont archivés dans `07_TRACKING/`.
 
 ## Règle fondamentale
 
@@ -30,6 +34,8 @@ Lire dans cet ordre :
 15. `00_REFERENCE/14_PLAN_VALIDATION.md`
 16. `00_REFERENCE/15_GLOSSAIRE_ET_FAQ.md`
 17. `01_ORCHESTRATION/00_MASTER_ORCHESTRATION.md`
+18. `01_ORCHESTRATION/09_AI_GOVERNANCE_WORKFLOW.md`
+19. `01_ORCHESTRATION/10_GIT_BRANCH_PR_WORKFLOW.md`
 
 ## Résumés opérationnels (`02_PROJECT/`)
 
@@ -42,6 +48,10 @@ Lire dans cet ordre :
 *(section ajoutée lors de l'audit final, même raison)*
 
 `04_VALIDATION/` contient le plan de test opérationnel, la checklist de recette et le suivi de traçabilité de développement. Le fichier maître pour la traçabilité métier reste `00_REFERENCE/12_MATRICE_TRACEABILITE.md` ; `04_VALIDATION/TRACEABILITY_DEV.md` en est le suivi d'exécution. Utilisé par `03_TASKS/13_E2E_VALIDATION.md`.
+
+## Git et CI
+
+Le développement applicatif se fait sur branches dédiées puis Pull Requests vers `main`. GitHub Actions est la CI de référence (`.github/workflows/quality-gates.yml`).
 
 ## Démarrage environnement
 

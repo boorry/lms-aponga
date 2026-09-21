@@ -2,6 +2,10 @@
 
 Tu travailles sur APONGA LMS.
 
+## Précondition
+
+Cette mission a été analysée par Claude AI ou revue humainement et validée avant transmission à Claude Code. Si le prompt entre en contradiction avec `00_REFERENCE/`, STOP et appliquer `05_CHANGE_CONTROL.md`.
+
 ## Mission
 **ID : `<TASK_ID>`**
 

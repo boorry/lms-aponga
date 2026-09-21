@@ -1,14 +1,16 @@
 # CHANGELOG_FINAL.md — APONGA LMS Development Ready Kit
 
+> **Note historique :** la section initiale décrit l'état du kit avant la revue de verrouillage du 21/09/2026. Le verdict actuel est celui de `FINAL_AUDIT.md`, qui la remplace comme état de référence.
+
 Modifications apportées lors de l'audit final, par fichier. Voir `FINAL_AUDIT.md` pour le détail et la justification de chaque décision.
 
 ## Fichiers renommés
 
 | Ancien nom | Nouveau nom | Raison |
 |---|---|---|
-| `03_TASKS/01_IDENTITY_SECURITY.md` | `03_TASKS/02_IDENTITY_SECURITY.md` | Correction de l'ordre Data Model → Identity |
-| `03_TASKS/02_DATA_MODEL.md` | `03_TASKS/01_DATA_MODEL.md` | Correction de l'ordre Data Model → Identity |
-| `03_TASKS/04_MEDIA.md` | `03_TASKS/04_MEDIA_LEARNING_DELIVERY.md` | Périmètre élargi (voir ci-dessous) |
+| 03_TASKS/01_IDENTITY_SECURITY.md | `03_TASKS/02_IDENTITY_SECURITY.md` | Correction de l'ordre Data Model → Identity |
+| 03_TASKS/02_DATA_MODEL.md | `03_TASKS/01_DATA_MODEL.md` | Correction de l'ordre Data Model → Identity |
+| 03_TASKS/04_MEDIA.md | `03_TASKS/04_MEDIA_LEARNING_DELIVERY.md` | Périmètre élargi (voir ci-dessous) |
 
 ## Fichiers réécrits ou modifiés en profondeur
 
@@ -44,10 +46,66 @@ Modifications apportées lors de l'audit final, par fichier. Voir `FINAL_AUDIT.m
 
 ## Fichiers non modifiés (vérifiés conformes)
 
-Les 16 documents de `00_REFERENCE/` autres que `06`, `07`, `08` et `16` (soit `00`, `01`, `02`, `03`, `04`, `05`, `09` à `15`) ont été relus intégralement et n'ont nécessité aucune correction. Les scripts de `08_SCRIPTS/` ont été relus ligne à ligne (logique, chemins, healthchecks) sans défaut trouvé. `07_TRACKING/*.md` n'a pas été modifié : ces fichiers sont des modèles vides destinés à l'équipe de développement réelle, pas à l'auditeur.
+Les 16 documents de `00_REFERENCE/` autres que `06`, `07`, `08` et `16` (soit `00`, `01`, `02`, `03`, `04`, `05`, `09` à `15`) ont été relus intégralement et n'ont nécessité aucune correction. Les scripts de `08_SCRIPTS/` ont été relus ligne à ligne (logique, chemins, healthchecks) sans défaut trouvé. 07_TRACKING/*.md n'a pas été modifié : ces fichiers sont des modèles vides destinés à l'équipe de développement réelle, pas à l'auditeur.
 
 ## Vérifications automatiques exécutées après corrections
 
-- Scan de toutes les références de fichiers (`` `xxx.md` ``, `.sh`, `.yml`, `.ps1`, `.env`) dans les 76 fichiers du dépôt : aucune référence cassée hors des trois renvois historiques intentionnels vers l'ancien pack `07/08/09` reçu séparément (documentés comme obsolètes dans `00_REFERENCE/01_ANALYSE_CRITIQUE_ET_SUIVI.md`).
+- Scan de toutes les références de fichiers (un nom de fichier Markdown, `.sh`, `.yml`, `.ps1`, `.env`) dans les 76 fichiers du dépôt : aucune référence cassée hors des trois renvois historiques intentionnels vers l'ancien pack `07/08/09` reçu séparément (documentés comme obsolètes dans `00_REFERENCE/01_ANALYSE_CRITIQUE_ET_SUIVI.md`).
 - Extraction des 58 identifiants `T-xxx` de `13_BACKLOG_V1.md` et vérification de leur présence (citation directe ou plage explicite) dans `03_TASKS/` : couverture 58/58 après corrections (contre 50/58 avant).
 - Recherche de collisions résiduelles entre `Gate G` et `Gate P` : aucune.
+
+
+---
+
+# Revue de verrouillage — 2026-09-21
+
+Cette section documente les corrections appliquées après l'audit Claude AI et la revue de verrouillage.
+
+## Gouvernance
+
+- ajout de `01_ORCHESTRATION/09_AI_GOVERNANCE_WORKFLOW.md` ;
+- ajout de `01_ORCHESTRATION/10_GIT_BRANCH_PR_WORKFLOW.md` ;
+- ajout de `07_TRACKING/AUDIT_LOG.md` ;
+- ajout d'une structure de décisions/blockers/done ;
+- ajout de GitHub Actions et d'un template PR ;
+- ajout du pré-gate obligatoire avant Claude Code.
+
+## Sécurité / identité
+
+- ajout de `email_verified_at` ;
+- ajout des tables `refresh_tokens`, `email_verification_tokens`, `password_reset_tokens` ;
+- choix V1 verrouillé sur Argon2id ;
+- suppression de `JWT_REFRESH_SECRET` incohérent avec le refresh opaque ;
+- historique des rôles dans `user_roles` ;
+- matrice rôle → permission normative ;
+- ajout de `POST /auth/verify-email`.
+
+## API / métier
+
+- ajout de `course.review` avec `POST /courses/:id/submit-review` ;
+- ajout de `enrollment.read_all` avec `GET /admin/enrollments` ;
+- ajout de `submission.read_own` avec `GET /submissions/me` ;
+- ajout de `submission.review` avec `POST /teacher/submissions/:id/start-review` ;
+- séparation Feedback DRAFT / PUBLISHED ;
+- normalisation de `/admin/users` et `/admin/users/:id` ;
+- suppression de `Submission.ARCHIVED` en V1 ;
+- registre unique INV-01 à INV-09 ;
+- explicitation du rattachement Submission → Enrollment ;
+- ajout de `progress.time_spent_seconds` et du dashboard Learner.
+
+## Données / infrastructure
+
+- ajout de `domain_events` ;
+- ajout de `idempotency_keys` ;
+- ajout de `media IMAGE` côté Resource ;
+- soft-delete des Modules/Lessons/Resources ;
+- procédure stricte de verrouillage des versions ;
+- `.gitignore` ajouté ;
+- CI GitHub Actions ajoutée.
+
+## Orchestration
+
+- réordonnancement des phases pour respecter les dépendances Guardian → Enrollment → Submission ;
+- séparation Media backend / Learning Delivery frontend ;
+- T-105 explicitement rattachée à la mission Identity ;
+- 58/58 tâches du backlog explicitement couvertes.

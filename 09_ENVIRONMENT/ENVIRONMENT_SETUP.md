@@ -110,7 +110,7 @@ docker compose -f 08_SCRIPTS/docker-compose.dev.yml ps
 
 Copier `.env.example` vers `.env` dans le workspace applicatif.
 
-Ne jamais commit `.env`.
+Ne jamais commit `.env`. En local, les secrets `CHANGE_ME_LOCAL_ONLY` sont des placeholders et ne doivent jamais être utilisés en staging/production.
 
 ## 10. Cloudflare
 
@@ -134,4 +134,4 @@ Sous PowerShell :
 ./08_SCRIPTS/verify-env.ps1
 ```
 
-Le script doit échouer si une version obligatoire est incorrecte.
+Le script doit échouer si une version obligatoire est incorrecte. Il ne doit jamais proposer automatiquement une version de remplacement.

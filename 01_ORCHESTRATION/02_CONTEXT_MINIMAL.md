@@ -18,14 +18,20 @@ Architecture + modèle + états + versionnement + API + backlog.
 ## Media & Learning Delivery
 Architecture + media lifecycle + sécurité + API + jobs + backlog + contraintes terrain (mode économie de données, cache PWA).
 
+## Guardian foundation
+Architecture + états + sécurité + modèle + API + invariants + backlog.
+
 ## Enrollment
-Architecture + états + versionnement + sécurité + API + backlog.
+Architecture + états + versionnement + sécurité + Guardian + API + backlog.
+
+## Notifications
+Architecture + jobs + modèle + idempotence + API + backlog.
 
 ## Submission
-Architecture + états + sécurité + media + jobs + API + tests + backlog.
+Architecture + états + sécurité + media + Guardian + jobs + API + tests + backlog.
 
-## Guardian
-Architecture + états + sécurité + modèle + API + backlog.
+## Guardian consultation
+Architecture + sécurité + Progress + Feedback + API + backlog.
 
 ## Frontend
 Architecture + API + catalogue écrans + template source + stratégie de test.

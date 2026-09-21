@@ -1,6 +1,6 @@
 # 03 — Modèle de données — APONGA LMS
 
-**Statut : schéma définitif pour le V1.** Ce document intègre les corrections demandées par l'analyse critique (C-03, C-07, C-08, C-09) et les décisions architecturales complémentaires (ADR-006, 007, 009, 012, 015).
+**Statut : schéma définitif pour le V1.** Les timestamps sont stockés en UTC ; `birth_date` est une date civile sans fuseau. Ce document intègre les corrections demandées par l'analyse critique (C-03, C-07, C-08, C-09) et les décisions architecturales complémentaires (ADR-006, 007, 009, 012, 015).
 
 ---
 
@@ -9,6 +9,9 @@
 ```text
 users ───< user_roles >─── roles
   │  │
+  │  ├──< refresh_tokens
+  │  ├──< email_verification_tokens
+  │  ├──< password_reset_tokens
   │  └──< guardianships >──┐ (guardian_user_id, minor_user_id → users)
   │
   ├──< course_teachers >── courses ──< course_versions
@@ -24,7 +27,8 @@ users ───< user_roles >─── roles
   │        └──< feedbacks ── media_assets (réponse, optionnelle)
   │
   └──< audit_log
-       notification_deliveries
+       domain_events ──< notification_deliveries
+       idempotency_keys
        settings (table globale, sans FK vers users)
 ```
 
@@ -43,7 +47,10 @@ country_code
 locale
 created_at
 updated_at
+email_verified_at timestamp (nullable)
 ```
+`email_verified_at` est renseigné uniquement après validation du jeton de vérification. Un compte auto-inscrit sans cette valeur ne peut pas ouvrir de session.
+
 Le champ `person_id` envisagé précédemment est retiré : sans usage métier concret en V1, il n'ajoutait que de l'ambiguïté (recommandation de l'analyse reçue, adoptée telle quelle).
 
 **Règle** : le statut « mineur » (âge < 15 ans) n'est jamais stocké ; il est calculé à la volée à partir de `birth_date`, pour rester toujours exact.
@@ -53,8 +60,52 @@ Le champ `person_id` envisagé précédemment est retiré : sans usage métier c
 roles(id PK, code UNIQUE, name)
   -- codes : learner, teacher, content_author, academy_manager, administrator, guardian
 
-user_roles(user_id FK, role_id FK)
+user_roles(
+  id UUID PK,
+  user_id FK,
+  role_id FK,
+  granted_at,
+  granted_by FK → users (nullable for bootstrap/system seed),
+  revoked_at (nullable),
+  revoked_by (nullable, FK → users)
+)
 ```
+Une affectation active est celle dont `revoked_at IS NULL`. Une contrainte DB d'unicité partielle interdit deux affectations actives du même rôle pour un même utilisateur. Les anciennes affectations sont conservées pour l'historique. Les policies n'utilisent jamais une affectation révoquée.
+
+### `refresh_tokens`
+```text
+id UUID PK
+user_id FK → users
+token_hash UNIQUE
+expires_at                 -- 30 jours maximum
+created_at
+used_at (nullable)
+revoked_at (nullable)
+replaced_by_id (nullable, FK → refresh_tokens)
+```
+Le token opaque n'est jamais stocké en clair. Une rotation rend l'ancien token inutilisable et permet sa révocation individuelle.
+
+### `email_verification_tokens`
+```text
+id UUID PK
+user_id FK → users
+token_hash UNIQUE
+expires_at                 -- 30 minutes maximum
+used_at (nullable)
+created_at
+```
+Un token utilisé ou expiré ne peut plus valider le compte.
+
+### `password_reset_tokens`
+```text
+id UUID PK
+user_id FK → users
+token_hash UNIQUE
+expires_at                 -- 30 minutes maximum
+used_at (nullable)
+created_at
+```
+Un token utilisé ou expiré ne peut plus réinitialiser le mot de passe.
 
 ### `guardianships`
 ```text
@@ -78,7 +129,7 @@ id UUID PK
 slug UNIQUE
 title_i18n JSONB, description_i18n JSONB
 level, type
-status (DRAFT / IN_REVIEW / PUBLISHED / ARCHIVED)
+status (DRAFT / IN_REVIEW / PUBLISHED)
 enrollment_open boolean DEFAULT true
 published_version_id (nullable, FK → course_versions)   -- version actuellement servie
 current_version_number integer DEFAULT 0
@@ -92,7 +143,7 @@ Cette table représente **toujours le brouillon de travail courant** (voir `05_V
 ```text
 id PK
 course_id FK → courses
-user_id FK → users               -- doit avoir le rôle Teacher (policy applicative, voir 04 §5)
+user_id FK → users               -- doit avoir le rôle Teacher (policy applicative, voir 04 §7)
 assigned_by FK → users           -- doit être Manager/Admin (policy d'autorisation)
 assigned_at timestamp
 role_in_course (nullable : "main_teacher", "assistant")
@@ -107,7 +158,7 @@ deactivated_by (nullable, FK → users)
 id UUID PK
 course_id FK → courses
 version_number integer
-snapshot JSONB                   -- Course + Modules + Lessons + Resources + ordre + is_required + requires_submission
+snapshot JSONB                   -- Course + Modules + Lessons + Resources + ordre + is_required + requires_submission + media_asset_id
 published_by FK → users
 published_at timestamp
 ```
@@ -116,21 +167,25 @@ published_at timestamp
 ### `modules`
 ```text
 id UUID PK, course_id FK, title_i18n JSONB, position
+deleted_at (nullable)
 ```
+Les suppressions de brouillon sont des soft-deletes en V1. Une ligne référencée par une version publiée, une Progress ou une Submission n'est jamais supprimée physiquement.
 
 ### `lessons`
 ```text
 id UUID PK, module_id FK, title_i18n JSONB, position
 content_type, requires_submission boolean
-is_required boolean NOT NULL DEFAULT true    -- ajouté (C-12, ADR-006)
+is_required boolean NOT NULL DEFAULT true
+deleted_at (nullable)
 ```
 
 ### `resources`
 ```text
 id UUID PK, lesson_id FK
-resource_type (VIDEO/AUDIO/PDF)
-media_asset_id FK → media_assets             -- remplace external_url (C-03)
+resource_type (VIDEO/AUDIO/PDF/IMAGE)
+media_asset_id FK → media_assets
 bpm (nullable), time_signature (nullable)
+deleted_at (nullable)
 ```
 
 ### `enrollments`
@@ -152,6 +207,7 @@ enrollment_id FK → enrollments
 lesson_id FK → lessons
 course_version_id FK → course_versions       -- dénormalisé depuis enrollment, pour permettre une contrainte de cohérence (C-08)
 status (NOT_STARTED / IN_PROGRESS / COMPLETED)
+time_spent_seconds integer NOT NULL DEFAULT 0
 started_at (nullable), completed_at (nullable)
 updated_at
 ```
@@ -160,11 +216,12 @@ updated_at
 ```text
 id UUID PK
 learner_id FK → users
-course_version_id FK → course_versions       -- (ADR-003)
+enrollment_id FK → enrollments
+course_version_id FK → course_versions
 lesson_id FK → lessons
 media_id FK → media_assets                   -- une seule pièce média en V1 (C-19)
 notes
-status (SUBMITTED / IN_REVIEW / FEEDBACK_GIVEN / CANCELLED / ARCHIVED)
+status (SUBMITTED / IN_REVIEW / FEEDBACK_GIVEN / CANCELLED)
 submitted_at, created_at
 retention_expires_at                         -- calculé = submitted_at + durée de rétention par défaut (24 mois)
 ```
@@ -200,7 +257,9 @@ created_at, ready_at (nullable)
 ```text
 key UNIQUE, value JSONB
 -- inclut notamment : max_active_submissions_per_teacher (défaut 20),
---                     submission_retention_months (défaut 24)
+--                     submission_retention_months (défaut 24),
+--                     media_video_signed_url_minutes (défaut 60),
+--                     media_file_signed_url_minutes (défaut 30)
 ```
 
 ### `audit_log`
@@ -208,13 +267,39 @@ key UNIQUE, value JSONB
 id UUID PK, actor_user_id FK, action, entity_type, entity_id, metadata JSONB, created_at
 ```
 
+### `domain_events`
+```text
+id UUID PK
+event_type
+payload JSONB
+created_at
+claimed_at (nullable)
+claim_token (nullable)
+dispatched_at (nullable)
+```
+L'événement est créé dans la même transaction que l'action métier source. `dispatched_at IS NULL` signifie qu'il reste à publier vers BullMQ.
+
 ### `notification_deliveries`
 Décrite en détail dans `09_NOTIFICATIONS_ET_JOBS.md`.
 ```text
-id UUID PK, event_id, channel, recipient_user_id FK, template_code
+id UUID PK, event_id FK → domain_events, channel, recipient_user_id FK, template_code
 status, attempt_count, last_error (nullable), sent_at (nullable), created_at
 ```
+Contrainte d'unicité : `(event_id, channel, recipient_user_id)`.
 
+### `idempotency_keys`
+```text
+id UUID PK
+key
+user_id FK → users
+endpoint
+request_hash
+status_code
+response_body JSONB
+created_at
+expires_at                 -- rétention V1 : 24h minimum
+```
+Contrainte d'unicité sur `(user_id, endpoint, key)`. Une même clé réutilisée avec un payload différent est rejetée en `409`. La réponse initiale peut être rejouée après redémarrage du backend.
 ## 3. Tables réservées V2 — non construites en V1
 
 ```text

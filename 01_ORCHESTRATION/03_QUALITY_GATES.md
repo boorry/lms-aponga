@@ -15,6 +15,7 @@ Ces gates (**G0–G8**) sont des dimensions transversales, vérifiées à plusie
 - lint sans erreur
 - tests verts
 - build backend/frontend vert
+- ces checks sont exécutés automatiquement par GitHub Actions dès qu'un `package-lock.json` existe ; une PR applicative ne peut pas être considérée validée sur la seule exécution locale
 
 ## G2 — Data
 - Prisma schema cohérent
@@ -47,3 +48,10 @@ Ces gates (**G0–G8**) sont des dimensions transversales, vérifiées à plusie
 - health/readiness
 - logs/correlation ID
 - rollback documenté
+
+
+## Politique CI
+
+GitHub Actions est la CI de référence du dépôt. La CI exécute au minimum lint, typecheck, tests et build sur les Pull Requests et les pushes vers `main`.
+
+Tant que le repository ne contient pas encore le workspace applicatif et son `package-lock.json`, la CI est en mode **kit-only** : elle valide la présence de la structure et n'exécute pas de commandes Node inexistantes. Dès le bootstrap Foundation, l'absence de `package-lock.json` sur une branche applicative est un échec CI.

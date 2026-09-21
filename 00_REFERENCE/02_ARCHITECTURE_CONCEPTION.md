@@ -33,7 +33,7 @@ L'autorisation est exprimée par **permissions granulaires**, pas seulement par 
 
 ### 2.3 Assignation Enseignant ↔ Cours
 
-Relation many-to-many (`course_teachers`). Seuls Academy Manager et Administrator peuvent créer ou désactiver une assignation. Un cours ne peut être publié sans au moins un enseignant activement assigné. Détail des états et de l'historisation en `04_MACHINES_ETATS_ET_REGLES_METIER.md` §5.
+Relation many-to-many (`course_teachers`). Seuls Academy Manager et Administrator peuvent créer ou désactiver une assignation. Un cours ne peut être publié sans au moins un enseignant activement assigné. Détail des états et de l'historisation en `04_MACHINES_ETATS_ET_REGLES_METIER.md` §7.
 
 ### 2.4 Guardian et apprenant mineur
 

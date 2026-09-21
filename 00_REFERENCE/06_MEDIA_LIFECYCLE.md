@@ -58,10 +58,10 @@ Upload direct vers R2 / Stream    (le backend n'est jamais traversé par le fich
   ↓
 POST /media/{id}/complete
   ↓
-Le backend vérifie : taille, type MIME, existence réelle de l'objet chez le provider,
+Le backend considère l'upload comme `UPLOADING` puis vérifie : taille, type MIME, existence réelle de l'objet chez le provider,
                       état cohérent, propriétaire logique (owner_user_id = utilisateur courant)
   ↓
-media_asset.status = READY  (ou FAILED si une vérification échoue)
+media_asset.status = READY  (ou FAILED si une vérification échoue). `complete` peut effectuer atomiquement `INITIATED → UPLOADING → READY/FAILED` si aucun événement intermédiaire `UPLOADING` n'a été reçu.
 ```
 
 Ce flux est identique pour une Resource (Content Author), une Submission (Learner) et un Feedback (Teacher) — seul le point d'attache change une fois le `media_asset` prêt.

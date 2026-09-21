@@ -16,7 +16,7 @@ Ce n'est pas deux objets parallèles (« le brouillon » et « le publié ») : 
 Le Content Author ou l'Academy Manager modifie librement `courses`, `modules`, `lessons`, `resources`. Ces modifications n'ont **aucun effet** sur les apprenants déjà inscrits : ils ne consultent jamais ces tables directement, mais l'instantané de la version qu'ils ont pinée à leur inscription.
 
 ### Publication (→ PUBLISHED)
-En une seule transaction (voir `04_MACHINES_ETATS_ET_REGLES_METIER.md` §10) :
+En une seule transaction (voir `04_MACHINES_ETATS_ET_REGLES_METIER.md` §11) :
 1. Un nouvel enregistrement `course_versions` est créé, avec `version_number = current_version_number + 1`.
 2. Le `snapshot` JSONB capture : les métadonnées du Course, tous les Modules, toutes les Lessons (avec `is_required`, `requires_submission`, position), toutes les Resources qui leur sont rattachées (avec leurs métadonnées de lecture : type, durée, bpm, time_signature).
 3. `courses.published_version_id` pointe vers ce nouvel enregistrement.
@@ -24,7 +24,7 @@ En une seule transaction (voir `04_MACHINES_ETATS_ET_REGLES_METIER.md` §10) :
 5. Le cours redevient visible dans le catalogue public et rouvre aux inscriptions (si `enrollment_open = true`).
 
 ### Retour en édition d'un cours déjà publié
-Le Manager peut remettre `courses.status` à `IN_REVIEW` (ou `DRAFT`) pour préparer une nouvelle version. Effet immédiat :
+Le Manager utilise le retour en édition pour remettre `courses.status` à `IN_REVIEW` afin de préparer une nouvelle version. Effet immédiat :
 - Le cours **disparaît du catalogue public** et devient fermé aux nouvelles inscriptions.
 - **Aucun effet** sur les apprenants déjà inscrits, qui continuent de consulter le `course_versions.snapshot` qu'ils ont pinée — ce contenu ne change jamais, même si le brouillon en cours d'édition modifie ou supprime des leçons.
 - Cette règle ferme explicitement C-18 (point identifié lors de cette révision) : il n'y a jamais d'ambiguïté entre « statut de la ligne Course » et « version réellement servie ».

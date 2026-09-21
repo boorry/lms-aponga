@@ -1,9 +1,5 @@
 # Done
 
-Aucune tâche de développement n'est considérée terminée à la création du kit.
+Aucune tâche applicative n'est encore terminée.
 
-Format :
-
-| Date | Task | Résumé | Tests | Résultat | Risque |
-|---|---|---|---|---|---|
-| — | — | — | — | — | — |
+Le bootstrap et les missions applicatives ne doivent pas être marqués DONE avant leurs critères d'acceptation et leurs preuves de validation.
